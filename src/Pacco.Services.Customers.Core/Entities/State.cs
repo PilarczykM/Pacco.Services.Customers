@@ -1,11 +1,10 @@
-namespace Pacco.Services.Customers.Core.Entities
+namespace Pacco.Services.Customers.Core.Entities;
+
+public enum State
 {
-    public enum State
-    {
-        Unknown,
-        Valid,
-        Incomplete,
-        Suspicious,
-        Locked
-    }
+    Unknown,
+    Valid,
+    Incomplete,
+    Suspicious,
+    Locked
 }
