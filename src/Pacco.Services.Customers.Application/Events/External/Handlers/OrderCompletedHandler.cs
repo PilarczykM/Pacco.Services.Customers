@@ -1,6 +1,9 @@
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
+
 using Convey.CQRS.Events;
+
 using Pacco.Services.Customers.Application.Services;
 using Pacco.Services.Customers.Core.Exceptions;
 using Pacco.Services.Customers.Core.Repositories;
@@ -24,18 +27,13 @@ namespace Pacco.Services.Customers.Application.Events.External.Handlers
             _messageBroker = messageBroker;
         }
 
-        public async Task HandleAsync(OrderCompleted @event)
+        public async Task HandleAsync(OrderCompleted @event, CancellationToken cancellationToken = default)
         {
-            var customer = await _customerRepository.GetAsync(@event.CustomerId);
-            if (customer is null)
-            {
-                throw new CustomerNotFoundException(@event.CustomerId);
-            }
+            var customer = await _customerRepository.GetAsync(@event.CustomerId)
+                ?? throw new CustomerNotFoundException(@event.CustomerId);
 
-            var isVip = customer.IsVip;
             customer.AddCompletedOrder(@event.OrderId);
             _vipPolicy.ApplyVipStatusIfEligible(customer);
-            var vipApplied = !isVip && customer.IsVip;
             await _customerRepository.UpdateAsync(customer);
             var events = _eventMapper.MapAll(customer.Events);
             await _messageBroker.PublishAsync(events.ToArray());
