@@ -1,9 +1,8 @@
 using Pacco.Services.Customers.Core.Entities;
 
-namespace Pacco.Services.Customers.Core.Services
+namespace Pacco.Services.Customers.Core.Services;
+
+public interface IVipPolicy
 {
-    public interface IVipPolicy
-    {
-        void ApplyVipStatusIfEligible(Customer customer);
-    }
+    void ApplyVipStatusIfEligible(Customer customer);
 }

@@ -1,103 +1,103 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+
 using Pacco.Services.Customers.Core.Events;
 using Pacco.Services.Customers.Core.Exceptions;
 
-namespace Pacco.Services.Customers.Core.Entities
+namespace Pacco.Services.Customers.Core.Entities;
+
+public class Customer : AggregateRoot
 {
-    public class Customer : AggregateRoot
+    private ISet<Guid> _completedOrders = new HashSet<Guid>();
+
+    public string Email { get; private set; }
+    public string FullName { get; private set; }
+    public string Address { get; private set; }
+    public bool IsVip { get; private set; }
+    public State State { get; private set; }
+    public DateTime CreatedAt { get; private set; }
+
+    public IEnumerable<Guid> CompletedOrders
     {
-        private ISet<Guid> _completedOrders = new HashSet<Guid>();
+        get => _completedOrders;
+        set => _completedOrders = new HashSet<Guid>(value);
+    }
 
-        public string Email { get; private set; }
-        public string FullName { get; private set; }
-        public string Address { get; private set; }
-        public bool IsVip { get; private set; }
-        public State State { get; private set; }
-        public DateTime CreatedAt { get; private set; }
+    public Customer(Guid id, string email, DateTime createdAt) : this(id, email, createdAt, string.Empty,
+        string.Empty, false, State.Incomplete, Enumerable.Empty<Guid>())
+    {
+    }
 
-        public IEnumerable<Guid> CompletedOrders
+    public Customer(Guid id, string email, DateTime createdAt, string fullName, string address, bool isVip,
+        State state, IEnumerable<Guid> completedOrders = null)
+    {
+        Id = id;
+        Email = email;
+        CreatedAt = createdAt;
+        FullName = fullName;
+        Address = address;
+        IsVip = isVip;
+        CompletedOrders = completedOrders ?? Enumerable.Empty<Guid>();
+        State = state;
+    }
+
+    public void CompleteRegistration(string fullName, string address)
+    {
+        if (string.IsNullOrWhiteSpace(fullName))
         {
-            get => _completedOrders;
-            set => _completedOrders = new HashSet<Guid>(value);
+            throw new InvalidCustomerFullNameException(Id, fullName);
         }
 
-        public Customer(Guid id, string email, DateTime createdAt) : this(id, email, createdAt, string.Empty,
-            string.Empty, false, State.Incomplete, Enumerable.Empty<Guid>())
+        if (string.IsNullOrWhiteSpace(address))
         {
+            throw new InvalidCustomerAddressException(Id, address);
         }
 
-        public Customer(Guid id, string email, DateTime createdAt, string fullName, string address, bool isVip,
-            State state, IEnumerable<Guid> completedOrders = null)
+        if (State != State.Incomplete)
         {
-            Id = id;
-            Email = email;
-            CreatedAt = createdAt;
-            FullName = fullName;
-            Address = address;
-            IsVip = isVip;
-            CompletedOrders = completedOrders ?? Enumerable.Empty<Guid>();
-            State = state;
+            throw new CannotChangeCustomerStateException(Id, State);
         }
 
-        public void CompleteRegistration(string fullName, string address)
+        FullName = fullName;
+        Address = address;
+        State = State.Valid;
+        AddEvent(new CustomerRegistrationCompleted(this));
+    }
+
+    public void SetValid() => SetState(State.Valid);
+
+    public void SetIncomplete() => SetState(State.Incomplete);
+
+    public void Lock() => SetState(State.Locked);
+
+    public void MarkAsSuspicious() => SetState(State.Suspicious);
+
+    private void SetState(State state)
+    {
+        var previousState = State;
+        State = state;
+        AddEvent(new CustomerStateChanged(this, previousState));
+    }
+
+    public void SetVip()
+    {
+        if (IsVip)
         {
-            if (string.IsNullOrWhiteSpace(fullName))
-            {
-                throw new InvalidCustomerFullNameException(Id, fullName);
-            }
-
-            if (string.IsNullOrWhiteSpace(address))
-            {
-                throw new InvalidCustomerAddressException(Id, address);
-            }
-
-            if (State != State.Incomplete)
-            {
-                throw new CannotChangeCustomerStateException(Id, State);
-            }
-
-            FullName = fullName;
-            Address = address;
-            State = State.Valid;
-            AddEvent(new CustomerRegistrationCompleted(this));
+            return;
         }
 
-        public void SetValid() => SetState(State.Valid);
-        
-        public void SetIncomplete() => SetState(State.Incomplete);
+        IsVip = true;
+        AddEvent(new CustomerBecameVip(this));
+    }
 
-        public void Lock() => SetState(State.Locked);
-
-        public void MarkAsSuspicious() => SetState(State.Suspicious);
-
-        private void SetState(State state)
+    public void AddCompletedOrder(Guid orderId)
+    {
+        if (orderId == Guid.Empty)
         {
-            var previousState = State;
-            State = state;
-            AddEvent(new CustomerStateChanged(this, previousState));
+            return;
         }
 
-        public void SetVip()
-        {
-            if (IsVip)
-            {
-                return;
-            }
-
-            IsVip = true;
-            AddEvent(new CustomerBecameVip(this));
-        }
-
-        public void AddCompletedOrder(Guid orderId)
-        {
-            if (orderId == Guid.Empty)
-            {
-                return;
-            }
-
-            _completedOrders.Add(orderId);
-        }
+        _completedOrders.Add(orderId);
     }
 }

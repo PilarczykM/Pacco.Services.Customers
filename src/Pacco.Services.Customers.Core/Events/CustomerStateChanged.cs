@@ -1,16 +1,15 @@
 using Pacco.Services.Customers.Core.Entities;
 
-namespace Pacco.Services.Customers.Core.Events
-{
-    public class CustomerStateChanged : IDomainEvent
-    {
-        public Customer Customer { get; }
-        public State PreviousState { get; }
+namespace Pacco.Services.Customers.Core.Events;
 
-        public CustomerStateChanged(Customer customer, State previousState)
-        {
-            Customer = customer;
-            PreviousState = previousState;
-        }
+public class CustomerStateChanged : IDomainEvent
+{
+    public Customer Customer { get; }
+    public State PreviousState { get; }
+
+    public CustomerStateChanged(Customer customer, State previousState)
+    {
+        Customer = customer;
+        PreviousState = previousState;
     }
 }
